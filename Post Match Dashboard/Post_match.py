@@ -19,7 +19,7 @@ from Football_Analysis_Tools import fotmob_visuals as fmvis
 import datetime
 
 from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:Liverpool19@localhost:5432/soccer')
+engine = create_engine('')
 
 today = datetime.date.today()
 today = today.strftime('%Y-%m-%d')

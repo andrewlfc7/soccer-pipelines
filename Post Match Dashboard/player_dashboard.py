@@ -24,7 +24,7 @@ import datetime
 
 
 from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:Liverpool19@localhost:5432/soccer')
+engine = create_engine('')
 
 
 conn = engine.connect()

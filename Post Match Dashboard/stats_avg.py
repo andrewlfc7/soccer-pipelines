@@ -14,7 +14,7 @@ today = datetime.date.today()
 today = today.strftime('%Y-%m-%d')
 
 from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:Liverpool19@localhost:5432/soccer')
+engine = create_engine('')
 
 
 current_competition = 'Premier League'

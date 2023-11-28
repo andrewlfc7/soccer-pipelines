@@ -24,7 +24,7 @@ data['competition'] = competition
 from sqlalchemy import create_engine
 
 
-engine = create_engine('postgresql://postgres:Liverpool19@72.74.59.108:5432/soccer')
+engine = create_engine('')
 
 
 

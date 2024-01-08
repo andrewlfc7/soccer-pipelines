@@ -10,6 +10,8 @@ import sqlite3
 from highlight_text import fig_text, ax_text
 from ast import literal_eval
 from unidecode import unidecode
+from google.cloud import storage
+from io import BytesIO
 
 import requests
 import bs4
@@ -22,16 +24,22 @@ from Football_Analysis_Tools import  whoscored_visuals as whovis
 from Football_Analysis_Tools import whoscored_data_engineering as who_eng
 import datetime
 
-
+import os
 from sqlalchemy import create_engine
-engine = create_engine('')
-
+engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
 
 conn = engine.connect()
+#
+import datetime
+import pytz  # Make sure to install this library if you haven't already
 
-today = datetime.date.today()
+# Set the time zone to Eastern Time
+eastern = pytz.timezone('US/Eastern')
+
+# Get the current date in Eastern Time
+today = datetime.datetime.now(eastern).date()
 today = today.strftime('%Y-%m-%d')
-
+#
 
 
 shots_query =f"""
@@ -42,6 +50,8 @@ SELECT * FROM fotmob_shots_data WHERE match_date = '{today}' AND ("teamId" = 865
 query =f"""
 SELECT * FROM opta_event_data WHERE match_date = '{today}' AND ("teamId" = 26 OR "match_id" IN (SELECT "match_id" FROM opta_event_data WHERE "teamId" = 26))
 """
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']='Post_Match_Dashboard/careful-aleph-398521-f12755bcaea3.json'
 
 
 shots_data = pd.read_sql(shots_query, conn)
@@ -186,24 +196,6 @@ player_id_dict = dict(zip(df_players['name'], df_players['id']))
 
 # ...
 
-# Function to get player ID, handling accents
-# def get_player_id(name):
-#     # First, try to find player ID with accents
-#     player_id = player_id_dict.get(name)
-#
-#     if player_id is None:
-#         # If not found, try a partial string match
-#         matching_names = df_players[df_players['name'].str.contains(name, case=False, na=False)]
-#
-#         if len(matching_names) == 1:
-#             player_id = matching_names.iloc[0]['id']
-#
-#         # If still not found, remove accents and try again
-#         if player_id is None:
-#             normalized_name = unidecode(name)
-#             player_id = player_id_dict.get(normalized_name)
-#
-#     return player_id
 
 def get_player_id(name):
     # First, try to find player ID with accents
@@ -244,7 +236,7 @@ def get_player_id(name):
 for player_name in centerbacks:
     player_id = get_player_id(player_name)
     try:
-        player_logo_path = f'Data/player_image/{player_id}.png'
+        player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
         club_icon = Image.open(player_logo_path).convert('RGBA')
     except FileNotFoundError as e:
         print(f"Could not find image for player: {player_name}")
@@ -297,7 +289,7 @@ for player_name in centerbacks:
     whovis.plot_player_passes_rec_opta(ax6, player_name, passes_df)
 
 
-    player_logo_path = f'Data/player_image/{player_id}.png'
+    player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
     club_icon = Image.open(player_logo_path).convert('RGBA')
 
     logo_ax = fig.add_axes([0, .94, 0.12, 0.12], frameon=False)
@@ -307,13 +299,44 @@ for player_name in centerbacks:
 
     fig.suptitle(f'{player_name}  Post Match Dashboard', fontsize=24, color='#e1dbd6', ha='center')
 
+    # plt.savefig(
+    #     f"Post_Match_Dashboard/figures/playerdashboard{player_name}.png",
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     edgecolor="none",
+    #     transparent=False
+    # )
+    # Create a BytesIO object to store the figure
+    figure_buffer = BytesIO()
+
+    # Save the figure to the BytesIO object
     plt.savefig(
-        f"figures/playerdashboard{player_name}.png",
+        figure_buffer,
+        format="png",  # Use the appropriate format for your figure
         dpi=600,
         bbox_inches="tight",
         edgecolor="none",
         transparent=False
     )
+
+    # Reset the buffer position to the beginning
+    figure_buffer.seek(0)
+
+    # Initialize Google Cloud Storage client and get the bucket
+    storage_client = storage.Client()
+    bucket_name = "postmatch-dashboards"
+    bucket = storage_client.get_bucket(bucket_name)
+
+    # Specify the blob path within the bucket
+    blob_path = f"figures/{today}/playerdashboard{player_name}.png"
+
+    # Create a new Blob and upload the figure
+    blob = bucket.blob(blob_path)
+    blob.upload_from_file(figure_buffer, content_type="image/png")
+
+    # Close the BytesIO buffer
+    figure_buffer.close()
+
 
 
 
@@ -321,7 +344,7 @@ for player_name in centerbacks:
 for player_name in fullbacks:
     player_id = get_player_id(player_name)
     try:
-        player_logo_path = f'Data/player_image/{player_id}.png'
+        player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
         club_icon = Image.open(player_logo_path).convert('RGBA')
     except FileNotFoundError as e:
         print(f"Could not find image for player: {player_name}")
@@ -374,7 +397,7 @@ for player_name in fullbacks:
     whovis.plot_player_passes_rec_opta(ax6, player_name, passes_df)
 
 
-    player_logo_path = f'Data/player_image/{player_id}.png'
+    player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
     club_icon = Image.open(player_logo_path).convert('RGBA')
 
     logo_ax = fig.add_axes([0, .94, 0.12, 0.12], frameon=False)
@@ -384,13 +407,44 @@ for player_name in fullbacks:
 
     fig.suptitle(f'{player_name}  Post Match Dashboard', fontsize=24, color='#e1dbd6', ha='center')
 
+    # plt.savefig(
+    #     f"Post_Match_Dashboard/figures/playerdashboard{player_name}.png",
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     edgecolor="none",
+    #     transparent=False
+    # )
+
+    # Create a BytesIO object to store the figure
+    figure_buffer = BytesIO()
+
+    # Save the figure to the BytesIO object
     plt.savefig(
-        f"figures/playerdashboard{player_name}.png",
+        figure_buffer,
+        format="png",  # Use the appropriate format for your figure
         dpi=600,
         bbox_inches="tight",
         edgecolor="none",
         transparent=False
     )
+
+    # Reset the buffer position to the beginning
+    figure_buffer.seek(0)
+
+    # Initialize Google Cloud Storage client and get the bucket
+    storage_client = storage.Client()
+    bucket_name = "postmatch-dashboards"
+    bucket = storage_client.get_bucket(bucket_name)
+
+    # Specify the blob path within the bucket
+    blob_path = f"figures/{today}/playerdashboard{player_name}.png"
+
+    # Create a new Blob and upload the figure
+    blob = bucket.blob(blob_path)
+    blob.upload_from_file(figure_buffer, content_type="image/png")
+
+    # Close the BytesIO buffer
+    figure_buffer.close()
 
 
 
@@ -398,7 +452,7 @@ for player_name in fullbacks:
 for player_name in midfielders:
     player_id = get_player_id(player_name)
     try:
-        player_logo_path = f'Data/player_image/{player_id}.png'
+        player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
         club_icon = Image.open(player_logo_path).convert('RGBA')
     except FileNotFoundError as e:
         print(f"Could not find image for player: {player_name}")
@@ -451,7 +505,7 @@ for player_name in midfielders:
 
 
 
-    player_logo_path = f'Data/player_image/{player_id}.png'
+    player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
     club_icon = Image.open(player_logo_path).convert('RGBA')
 
     logo_ax = fig.add_axes([0, .94, 0.12, 0.12], frameon=False)
@@ -461,14 +515,44 @@ for player_name in midfielders:
 
     fig.suptitle(f'{player_name}  Post Match Dashboard', fontsize=24, color='#e1dbd6', ha='center')
 
+    # plt.savefig(
+    #     f"Post_Match_Dashboard/figures/playerdashboard{player_name}.png",
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     edgecolor="none",
+    #     transparent=False
+    # )
+
+    # Create a BytesIO object to store the figure
+    figure_buffer = BytesIO()
+
+    # Save the figure to the BytesIO object
     plt.savefig(
-        f"figures/playerdashboard{player_name}.png",
+        figure_buffer,
+        format="png",  # Use the appropriate format for your figure
         dpi=600,
         bbox_inches="tight",
         edgecolor="none",
         transparent=False
     )
 
+    # Reset the buffer position to the beginning
+    figure_buffer.seek(0)
+
+    # Initialize Google Cloud Storage client and get the bucket
+    storage_client = storage.Client()
+    bucket_name = "postmatch-dashboards"
+    bucket = storage_client.get_bucket(bucket_name)
+
+    # Specify the blob path within the bucket
+    blob_path = f"figures/{today}/playerdashboard{player_name}.png"
+
+    # Create a new Blob and upload the figure
+    blob = bucket.blob(blob_path)
+    blob.upload_from_file(figure_buffer, content_type="image/png")
+
+    # Close the BytesIO buffer
+    figure_buffer.close()
 
 
 
@@ -526,7 +610,7 @@ for player_name in forwards:
     whovis.plot_player_heatmap(ax2, data,player_name,color='#1f8e98',sd=0)
 
 
-    player_logo_path = f'Data/player_image/{player_id}.png'
+    player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
     club_icon = Image.open(player_logo_path).convert('RGBA')
 
     logo_ax = fig.add_axes([0, .94, 0.12, 0.12], frameon=False)
@@ -536,13 +620,45 @@ for player_name in forwards:
 
     fig.suptitle(f'{player_name}  Post Match Dashboard', fontsize=24, color='#e1dbd6', ha='center')
 
+    # plt.savefig(
+    #     f"Post_Match_Dashboard/figures/playerdashboard{player_name}.png",
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     edgecolor="none",
+    #     transparent=False
+    # )
+
+    # Create a BytesIO object to store the figure
+    figure_buffer = BytesIO()
+
+    # Save the figure to the BytesIO object
     plt.savefig(
-        f"figures/playerdashboard{player_name}.png",
+        figure_buffer,
+        format="png",  # Use the appropriate format for your figure
         dpi=600,
         bbox_inches="tight",
         edgecolor="none",
         transparent=False
     )
+
+    # Reset the buffer position to the beginning
+    figure_buffer.seek(0)
+
+    # Initialize Google Cloud Storage client and get the bucket
+    storage_client = storage.Client()
+    bucket_name = "postmatch-dashboards"
+    bucket = storage_client.get_bucket(bucket_name)
+
+    # Specify the blob path within the bucket
+    blob_path = f"figures/{today}/playerdashboard{player_name}.png"
+
+    # Create a new Blob and upload the figure
+    blob = bucket.blob(blob_path)
+    blob.upload_from_file(figure_buffer, content_type="image/png")
+
+    # Close the BytesIO buffer
+    figure_buffer.close()
+
 
 for player_name in subs:
     player_id = get_player_id(player_name)
@@ -595,7 +711,7 @@ for player_name in subs:
 
 
 
-    player_logo_path = f'Data/player_image/{player_id}.png'
+    player_logo_path = f'Post_Match_Dashboard/Data/player_image/{player_id}.png'
     club_icon = Image.open(player_logo_path).convert('RGBA')
 
     logo_ax = fig.add_axes([0, .94, 0.12, 0.12], frameon=False)
@@ -605,13 +721,51 @@ for player_name in subs:
 
     fig.suptitle(f'{player_name}  Post Match Dashboard', fontsize=24, color='#e1dbd6', ha='center')
 
+    # plt.savefig(
+    #     f"Post_Match_Dashboard/figures/playerdashboard{player_name}.png",
+    #     dpi=600,
+    #     bbox_inches="tight",
+    #     edgecolor="none",
+    #     transparent=False
+    # )
+    # Create a BytesIO object to store the figure
+    figure_buffer = BytesIO()
+
+    # Save the figure to the BytesIO object
     plt.savefig(
-        f"figures/playerdashboard{player_name}.png",
+        figure_buffer,
+        format="png",  # Use the appropriate format for your figure
         dpi=600,
         bbox_inches="tight",
         edgecolor="none",
         transparent=False
     )
 
+    # Reset the buffer position to the beginning
+    figure_buffer.seek(0)
+
+    # Initialize Google Cloud Storage client and get the bucket
+    storage_client = storage.Client()
+    bucket_name = "postmatch-dashboards"
+    bucket = storage_client.get_bucket(bucket_name)
+
+    # Specify the blob path within the bucket
+    blob_path = f"figures/{today}/playerdashboard{player_name}.png"
+
+    # Create a new Blob and upload the figure
+    blob = bucket.blob(blob_path)
+    blob.upload_from_file(figure_buffer, content_type="image/png")
+
+    # Close the BytesIO buffer
+    figure_buffer.close()
+
+
 
 #%%
+
+#%%
+
+
+
+
+

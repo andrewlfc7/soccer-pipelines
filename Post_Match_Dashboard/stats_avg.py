@@ -2,6 +2,9 @@
 
 import datetime
 import json
+import os
+from google.cloud import storage
+from io import BytesIO
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -9,12 +12,22 @@ import requests
 import seaborn as sns
 from PIL import Image
 from highlight_text import fig_text
+#
+import datetime
+import pytz  # Make sure to install this library if you haven't already
 
-today = datetime.date.today()
+# Set the time zone to Eastern Time
+eastern = pytz.timezone('US/Eastern')
+
+# Get the current date in Eastern Time
+today = datetime.datetime.now(eastern).date()
 today = today.strftime('%Y-%m-%d')
 
+
+
+
 from sqlalchemy import create_engine
-engine = create_engine('')
+engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
 
 
 current_competition = 'Premier League'
@@ -265,7 +278,7 @@ fig.subplots_adjust(left=0.1, right=0.8, bottom=0.1, top=0.8, wspace=0.2, hspace
 
 
 
-team_logo_path = f'Data/team_logo/{8650}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{8650}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
@@ -453,4 +466,38 @@ sns.scatterplot(data=stats, x='xGOT_liv', y=index, c='#43B8AA', edgecolor='#43B8
 sns.scatterplot(data=stats[stats['matchId'] == Fotmob_matchID], x='xGOT_liv', y=index, c='#660708', edgecolor='k',
                 s=20, marker='o', alpha=.88, ax=axs[12])
 
-fig.savefig(f"figures/match_avgDashboard{today}.png", dpi=900, bbox_inches="tight")
+# fig.savefig(f"app/Post_Match_Dashboard/figures/match_avgDashboard{today}.png", dpi=900, bbox_inches="tight")
+
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']='Post_Match_Dashboard/careful-aleph-398521-f12755bcaea3.json'
+
+# Create a BytesIO object to store the figure
+figure_buffer = BytesIO()
+
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=700,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+
+# Initialize Google Cloud Storage client and get the bucket
+storage_client = storage.Client()
+bucket_name = "postmatch-dashboards"
+bucket = storage_client.get_bucket(bucket_name)
+
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/match_avgDashboard{today}.png"
+
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+
+# Close the BytesIO buffer
+figure_buffer.close()

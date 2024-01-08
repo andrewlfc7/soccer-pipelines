@@ -277,7 +277,7 @@ def create_convex_hull(events_df, name='default', min_events=3, include_events='
     """ Create a dataframe of convex hull information from statsbomb-style event data.
 
     Function to create convex hull information from a dataframe of whoscored-style event data, where each event has a
-    'location' entry. A convex hull object is created, which is defined as the smallest convex polygon that encloses
+    'location' entry.sh. A convex hull object is created, which is defined as the smallest convex polygon that encloses
     all the locations in the set of events. The outermost event locations may be omitted in order to produce a convex
     hull that better represents the most common event locations. The function returns a dataframe of convex hull
     information, including hull points, area and perimeter.
@@ -730,7 +730,7 @@ def get_xthreat(events_df, interpolate=True, pitch_length=100, pitch_width=100):
 
 
 
-    xt_grid = pd.read_csv('data/xT_Grid.csv')
+    xt_grid = pd.read_csv('Football_Analysis_Tools/data/xT_Grid.csv')
 
 
 

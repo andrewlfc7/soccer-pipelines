@@ -11,18 +11,31 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from PIL import Image
 
-from Football_Analysis_Tools import  whoscored_visuals as whovis
+from Football_Analysis_Tools import whoscored_visuals as whovis
 
 from Football_Analysis_Tools import odds
 from Football_Analysis_Tools import fotmob_visuals as fmvis
+import os
+from google.cloud import storage
+from io import BytesIO
 
 import datetime
 
 from sqlalchemy import create_engine
-engine = create_engine('')
+engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
 
-today = datetime.date.today()
+import datetime
+import pytz  # Make sure to install this library if you haven't already
+
+# # Set the time zone to Eastern Time
+eastern = pytz.timezone('US/Eastern')
+#
+# # Get the current date in Eastern Time
+today = datetime.datetime.now(eastern).date()
 today = today.strftime('%Y-%m-%d')
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']='Post_Match_Dashboard/careful-aleph-398521-f12755bcaea3.json'
+
 
 conn = engine.connect()
 
@@ -43,6 +56,7 @@ data = pd.read_sql(query, conn)
 
 
 
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']='Post_Match_Dashboard/careful-aleph-398521-f12755bcaea3.json'
 
 
 
@@ -136,9 +150,14 @@ away = data[data['teamId']==opta_away_teamID]
 colors = ["#264653","#2a9d8f","#e9c46a","#f4a261","#e76f51"]
 
 
-passnetwork_cmap = LinearSegmentedColormap.from_list('passnetwork', colors, N=250)
-plt.cm.register_cmap(name='passnetwork', cmap=passnetwork_cmap)
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.pyplot as plt
 
+# Your colormap creation
+passnetwork_cmap = LinearSegmentedColormap.from_list('passnetwork', colors, N=250)
+
+# Register the colormap using the recommended method
+plt.cm.register_cmap(name='passnetwork', cmap=passnetwork_cmap)
 
 def are_colors_similar_shade(color1, color2, threshold=40):
     # Compare colors based on their RGB values
@@ -174,10 +193,8 @@ awaycolor = shots_data[shots_data['Venue'] == 'Away']['teamColor'].iloc[0]
 
 
 
+
 from utils import check_logo_existence, ax_logo,get_and_save_logo
-import os
-
-
 
 check_logo_existence(away_id=Fotmob_awayID,home_id=Fotmob_homeID)
 
@@ -185,9 +202,9 @@ if check_logo_existence(away_id=Fotmob_awayID, home_id=Fotmob_homeID):
     print(f'Logos for teams {Fotmob_awayID} and {Fotmob_homeID} exist.')
 else:
     print(f'One or both logos are missing. Fetching and saving...')
-    if not os.path.exists(f'Data/team_logo/{Fotmob_awayID}.png'):
+    if not os.path.exists(f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'):
         get_and_save_logo(Fotmob_awayID)
-    if not os.path.exists(f'Data/team_logo/{Fotmob_homeID}.png'):
+    if not os.path.exists(f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'):
         get_and_save_logo(Fotmob_homeID)
 
 
@@ -362,7 +379,7 @@ ax5.spines['bottom'].set_visible(False)
 ax5.spines['left'].set_visible(False)
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
@@ -370,8 +387,7 @@ club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
 
-
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 
@@ -439,14 +455,41 @@ ax_text(
 ax.set_axis_off()
 
 
+from io import BytesIO
 
+# Create a BytesIO object to store the figure
+figure_buffer = BytesIO()
+
+# Save the figure to the BytesIO object
 plt.savefig(
-    f"figures/dashboardmain.png",
-    dpi = 500,
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
     bbox_inches="tight",
     edgecolor="none",
-    transparent = False
+    transparent=False
 )
+
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+
+# Initialize Google Cloud Storage client and get the bucket
+storage_client = storage.Client()
+bucket_name = "postmatch-dashboards"
+bucket = storage_client.get_bucket(bucket_name)
+
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboardmain{today}.png"
+
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+
+# Close the BytesIO buffer
+figure_buffer.close()
+
+
+
 
 
 period1_end_minute = int(data[data.period == 1]['minute'].max())
@@ -488,7 +531,7 @@ for i, (start_minute, end_minute) in enumerate(minutes):
     cbar.outline.set_edgecolor('#201D1D')
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 logo_ax = fig.add_axes([0, 1, 0.10, 0.08], frameon=False)
@@ -533,13 +576,35 @@ fig.text(0.8, 0.04, most_pass_combo_home, color='w', fontsize=8)
 
 
 
+# plt.savefig(
+#     f"Post_Match_Dashboard/figures/dashboardpassnetworkhome{matchDate}.png",
+#     dpi = 700,
+#     bbox_inches="tight",
+#     edgecolor="none",
+#     transparent = False
+# )
+
+# Create a BytesIO object to store the figure
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
 plt.savefig(
-    f"figures/dashboardpassnetworkhome{matchDate}.png",
-    dpi = 700,
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
     bbox_inches="tight",
     edgecolor="none",
-    transparent = False
+    transparent=False
 )
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboardpassnetworkhome{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
+
 
 
 fig = plt.figure(figsize=(11, 10), constrained_layout=True, dpi=300)
@@ -596,7 +661,7 @@ fig.text(0.5, 0.04, most_pass_combo_away, color='w', fontsize=8)
 
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 #away_logo_ax = ax.inset_axes([0.75, 0.8, 0.2, 0.2], transform=ax.transAxes)
@@ -616,13 +681,34 @@ away_logo_ax.set_yticks([])
 fig.suptitle('Passing Network', fontsize=10, fontweight='bold', y=1.01, x=0.5,c='#FCE6E6' ,  ha='center',va='top')
 
 
+# plt.savefig(
+#     f"Post_Match_Dashboard/figures/dashboardpassnetworkaway{matchDate}.png",
+#     dpi = 600,
+#     bbox_inches="tight",
+#     edgecolor="none",
+#     transparent = False
+# )
+
+# Create a BytesIO object to store the figure
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
 plt.savefig(
-    f"figures/dashboardpassnetworkaway{matchDate}.png",
-    dpi = 600,
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
     bbox_inches="tight",
     edgecolor="none",
-    transparent = False
+    transparent=False
 )
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboardpassnetworkaway{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
 
 
 def find_offensive_actions(events_df):
@@ -706,11 +792,11 @@ ax4.set_title(f"{away_name} Defensive Actions in Opponent Half",size="8", c="#FC
 
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 
@@ -773,10 +859,30 @@ ax.set_axis_off()
 
 
 
-# save the figure
-fig.savefig(f"figures/dashboard_teamactions{matchDate}.png", dpi=600, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_teamactions{matchDate}.png", dpi=600, bbox_inches="tight")
 
-fig = plt.figure(figsize=(14, 12), constrained_layout=True, dpi=500)
+
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_teamactions{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
+
+fig = plt.figure(figsize=(14, 12), constrained_layout=True, dpi=650)
 gs = fig.add_gridspec(ncols=2, nrows=2)
 fig.set_facecolor("#201D1D")
 ax1 = fig.add_subplot(gs[0, 0])
@@ -815,11 +921,11 @@ ax2.set_title(f"{away_name} Progressive Passes Cluster",size="10", c="#FCE6E6", 
 ax3.set_title(f"{home_name} Final Third Passes Cluster",size="10", c="#FCE6E6", loc="center")
 ax4.set_title(f"{away_name} Final Third Passes Cluster",size="10", c="#FCE6E6", loc="center")
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 #away_logo_ax = ax.inset_axes([0.75, 0.8, 0.2, 0.2], transform=ax.transAxes)
@@ -890,8 +996,28 @@ ax.set_axis_off()
 
 
 
-fig.savefig(f"figures/dashboard_cluster_passes{matchDate}.png", dpi=540, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_cluster_passes{matchDate}.png", dpi=540, bbox_inches="tight")
 
+
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_cluster_passes{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
 
 
 fig = plt.figure(figsize=(12, 8), constrained_layout=True, dpi=300)
@@ -936,11 +1062,11 @@ ax4.set_title(f"{away_name} Deep Completion ",size="8", c="#FCE6E6", loc="center
 
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 
@@ -1006,16 +1132,35 @@ ax_text(
 ax.set_axis_off()
 
 
-fig.savefig(f"figures/dashboard_xT_heatmap{matchDate}.png", dpi=700, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_xT_heatmap{matchDate}.png", dpi=700, bbox_inches="tight")
 
 
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_xT_heatmap{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
 
 
 
 
 
 #%%
-fig = plt.figure(figsize=(12, 14), constrained_layout=True, dpi=500)
+fig = plt.figure(figsize=(12, 14), constrained_layout=True, dpi=650)
 gs = fig.add_gridspec(ncols=2, nrows=2)
 fig.set_facecolor("#201D1D")
 # create subplots using gridspec
@@ -1035,11 +1180,11 @@ whovis.plot_team_heatmap_away(ax2,data=away,teamid=opta_away_teamID,color=awayco
 
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 
@@ -1108,7 +1253,30 @@ ax.set_axis_off()
 ax1.set_title(f"{home_name} Touch Heatmap ", size="8", c="#FCE6E6", loc="center")
 ax2.set_title(f"{away_name} Touch Heatmap", size="8", c="#FCE6E6", loc="center")
 
-fig.savefig(f"figures/dashboard_Touchheatmap{matchDate}.png", dpi=700, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_Touchheatmap{matchDate}.png", dpi=700, bbox_inches="tight")
+
+
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_Touchheatmap{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
+
+
 
 
 
@@ -1162,7 +1330,30 @@ ax2.set_title(f"{away_name} Players xT via Passes", size="12", c="#E1D3D3", loc=
 
 
 
-fig.savefig(f"figures/dashboard_xT_bar{matchDate}.png", dpi=700, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_xT_bar{matchDate}.png", dpi=700, bbox_inches="tight")
+
+
+
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_xT_bar{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
+
 
 # homecolor = ['#2a9d8f']
 # awaycolor = ['#dfab27']
@@ -1225,11 +1416,11 @@ ax4.set_title(f"{home_name} Goal Probability",size="8", c="#FCE6E6", loc="center
 ax5.set_title("Score Probability Matrix", size="8", c="#FCE6E6", loc="center")
 ax6.set_title(f"{away_name}Goal Probability",size="8", c="#FCE6E6", loc="center")
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 away_logo_ax = fig.add_axes([.90, 1, .1, .10], frameon=False)
@@ -1291,7 +1482,30 @@ away_logo_ax.axis('off')
 logo_ax.axis('off')
 
 
-fig.savefig(f"figures/dashboard_odds{matchDate}.png", dpi=600, bbox_inches="tight")
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboard_odds{matchDate}.png", dpi=600, bbox_inches="tight")
+
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboard_odds{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()
+
+
+
 
 
 def get_player_dfs(data):
@@ -1389,11 +1603,11 @@ ax4.set_title(f"{away_name} Territory Map Offensive Actions",size="6", c="#EFE9F
 
 
 
-team_logo_path = f'Data/team_logo/{Fotmob_homeID}.png'
+team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_homeID}.png'
 club_icon = Image.open(team_logo_path).convert('RGBA')
 
 
-away_team_logo_path = f'Data/team_logo/{Fotmob_awayID}.png'
+away_team_logo_path = f'Post_Match_Dashboard/Data/team_logo/{Fotmob_awayID}.png'
 away_club_icon = Image.open(away_team_logo_path).convert('RGBA')
 
 
@@ -1624,6 +1838,24 @@ fig_text(
 
 ax.set_axis_off()
 
+# fig.savefig(f"Post_Match_Dashboard/figures/dashboardTerritory_Map{matchDate}.png",bbox_inches="tight" ,dpi=600)
 
-
-fig.savefig(f"figures/dashboardTerritory_Map{matchDate}.png",bbox_inches="tight" ,dpi=600)
+figure_buffer = BytesIO()
+# Save the figure to the BytesIO object
+plt.savefig(
+    figure_buffer,
+    format="png",  # Use the appropriate format for your figure
+    dpi=650,
+    bbox_inches="tight",
+    edgecolor="none",
+    transparent=False
+)
+# Reset the buffer position to the beginning
+figure_buffer.seek(0)
+# Specify the blob path within the bucket
+blob_path = f"figures/{today}/dashboardTerritory_Map{matchDate}.png"
+# Create a new Blob and upload the figure
+blob = bucket.blob(blob_path)
+blob.upload_from_file(figure_buffer, content_type="image/png")
+# Close the BytesIO buffer
+figure_buffer.close()

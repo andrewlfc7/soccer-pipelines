@@ -44,16 +44,13 @@ match_id = get_match_date_and_id(8650)[1]
 
 # Specify the bucket and blob name
 bucket_name = "soccerdb-data"
-blob_name = f"{match_date}.json"  # Change the extension to json if that's the format you're working with
+blob_name = f"{match_date}.json" 
 
-# Create a blob with the specified name in the specified bucket
 data_blob = storage_client.bucket(bucket_name).blob(blob_name)
 
-# Download data as text
 data_as_text = data_blob.download_as_text()
 
-# Now, you can process the data_as_text as needed
-# For example, you can load it as JSON
+
 data = json.loads(data_as_text)
 
 data = data_processing(data)

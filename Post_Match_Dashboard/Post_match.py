@@ -10,6 +10,7 @@ import matplotlib
 from matplotlib.colors import LinearSegmentedColormap
 
 from PIL import Image
+import yaml
 
 from Football_Analysis_Tools import whoscored_visuals as whovis
 
@@ -22,10 +23,25 @@ from io import BytesIO
 import datetime
 
 from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
 
 import datetime
-import pytz  # Make sure to install this library if you haven't already
+import pytz
+
+
+with open('pipeline/database_config.yaml', 'r') as f:
+    config = yaml.safe_load(f)
+
+user = config['PGUSER']
+passwd = config['PGPASSWORD']
+host = config['PGHOST']
+port = config['PGPORT']
+db = config['PGDATABASE']
+db_url = f'postgresql://{user}:{passwd}@{host}:{port}/{db}'
+
+engine = create_engine(db_url)
+
+
+
 
 # # Set the time zone to Eastern Time
 eastern = pytz.timezone('US/Eastern')

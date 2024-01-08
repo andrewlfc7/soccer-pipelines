@@ -4,6 +4,7 @@ from time import sleep
 import pandas as pd
 import subprocess
 import datetime
+import yaml
 
 import sqlalchemy
 
@@ -97,7 +98,18 @@ csv_blob.upload_from_filename(csv_filename)
 from sqlalchemy import create_engine,exc
 
 
-engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
+with open('database_config.yaml', 'r') as f:
+    config = yaml.safe_load(f)
+
+user = config['PGUSER']
+passwd = config['PGPASSWORD']
+host = config['PGHOST']
+port = config['PGPORT']
+db = config['PGDATABASE']
+db_url = f'postgresql://{user}:{passwd}@{host}:{port}/{db}'
+
+engine = create_engine(db_url)
+
 
 
 

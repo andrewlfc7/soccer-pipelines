@@ -12,7 +12,8 @@ import requests
 import seaborn as sns
 from PIL import Image
 from highlight_text import fig_text
-#
+import yaml
+from sqlalchemy import create_engine
 import datetime
 import pytz  # Make sure to install this library if you haven't already
 
@@ -25,9 +26,19 @@ today = today.strftime('%Y-%m-%d')
 
 
 
+with open('pipeline/database_config.yaml', 'r') as f:
+    config = yaml.safe_load(f)
 
-from sqlalchemy import create_engine
-engine = create_engine('postgresql://postgres:Liverpool19@34.122.183.209:5432/soccer')
+user = config['PGUSER']
+passwd = config['PGPASSWORD']
+host = config['PGHOST']
+port = config['PGPORT']
+db = config['PGDATABASE']
+db_url = f'postgresql://{user}:{passwd}@{host}:{port}/{db}'
+
+engine = create_engine(db_url)
+
+
 
 
 current_competition = 'Premier League'

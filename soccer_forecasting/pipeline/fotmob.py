@@ -35,8 +35,8 @@ def get_matchround_fixtures(season_length,match_round,current_round):
     data_list = []
 
     # Loop over match ids and get match details
-    for match_id in match_ids:
-        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+    for matchId in match_ids:
+        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
         data = response.content
         data = json.loads(data)
 
@@ -48,11 +48,11 @@ def get_matchround_fixtures(season_length,match_round,current_round):
         away_team_name = away_team['name']
         away_team_id = away_team['id']
 
-        game_match_id = data['general']['matchId']
+        matchId = data['general']['matchId']
         matchRound = data['general']['matchRound']
 
         # Append the data as a dictionary to the list
-        data_list.append({'matchRound':matchRound,'game_match_id': game_match_id, 'home_team_id': home_team_id, 'home_team_name': home_team_name, 'away_team_id': away_team_id, 'away_team_name': away_team_name})
+        data_list.append({'matchRound':matchRound,'matchId': matchId, 'home_team_id': home_team_id, 'home_team_name': home_team_name, 'away_team_id': away_team_id, 'away_team_name': away_team_name})
 
     # Create the DataFrame from the list of dictionaries
     df = pd.DataFrame(data_list)
@@ -61,7 +61,7 @@ def get_matchround_fixtures(season_length,match_round,current_round):
 
 
 def get_latest_comp_shotsdata(season_length=int,league_id=int):
-    response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA&season=2020%2F2021')
+    response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA')
     data = json.loads(response.content)
     leagues = data['overview']['leagueOverviewMatches']
     match_ids = []
@@ -76,9 +76,8 @@ def get_latest_comp_shotsdata(season_length=int,league_id=int):
             match_ids.append(leagues[i]['id'])
 
     match_data = []
-
-    for match_id in match_ids:
-        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+    for matchId in match_ids:
+        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
 
         data = response.content
         data = json.loads(data)
@@ -90,7 +89,7 @@ def get_latest_comp_shotsdata(season_length=int,league_id=int):
         home_color = teamcolors['darkMode']['home']
         away_color = teamcolors['darkMode']['away']
         competitions = data['general']['parentLeagueName']
-        league_id=data['details']['id']
+        # league_id=data['details']['id']
 
         homeTeam = data['general']['homeTeam']
         awayTeam = data['general']['awayTeam']
@@ -139,7 +138,7 @@ def get_latest_comp_shotsdata(season_length=int,league_id=int):
         df_shot.drop(['onGoalShot'], axis=1, inplace=True)
 
         match_data.append(df_shot)
-        print(f"{match_id} processed")
+        print(f"{matchId} processed")
         print(f"{len(match_data)} matches processed.")
 
 
@@ -168,8 +167,8 @@ def get_season_shots_data(season,league_id):
 
     match_data = []
 
-    for match_id in match_ids:
-        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+    for matchId in match_ids:
+        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
         data = response.content
         data = json.loads(data)
 
@@ -223,7 +222,7 @@ def get_season_shots_data(season,league_id):
         df_shot.drop(['onGoalShot'], axis=1, inplace=True)
 
         match_data.append(df_shot)
-        print(f"{match_id} processed")
+        print(f"{matchId} processed")
         print(f"{len(match_data)} matches processed.")
 
     df_shot = pd.concat(match_data, ignore_index=True)
@@ -263,11 +262,11 @@ def get_season_shots_data(season,league_id):
 #
 #     match_data = []
 #
-#     for match_id in match_ids:
-#         response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+#     for matchId in match_ids:
+#         response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
 #
 #         if response.status_code != 200:
-#             print(f"Error fetching match details. Match ID: {match_id}, Status code: {response.status_code}")
+#             print(f"Error fetching match details. Match ID: {matchId}, Status code: {response.status_code}")
 #             continue
 #
 #         try:
@@ -277,7 +276,7 @@ def get_season_shots_data(season,league_id):
 #             continue
 #
 #         if 'general' not in data:
-#             print(f"Error: Unexpected match details format for Match ID: {match_id}")
+#             print(f"Error: Unexpected match details format for Match ID: {matchId}")
 #             continue
 #
 #         matchId = data['general']['matchId']
@@ -308,7 +307,7 @@ def get_season_shots_data(season,league_id):
 #         })
 #
 #         match_data.append(df_shot)
-#         print(f"{match_id} processed")
+#         print(f"{matchId} processed")
 #         print(f"{len(match_data)} matches processed.")
 #
 #     # Concatenate all DataFrames in the list
@@ -319,12 +318,121 @@ def get_season_shots_data(season,league_id):
 #         return None
 
 
-import requests
-import json
-import pandas as pd
+def format_season_for_url(season):
+    return season.replace('/', '%2F')
+
+# def get_season_matchgoals_data(season, league_id):
+#     formatted_season = format_season_for_url(season)
+#
+#     response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA&season={formatted_season}')
+#
+#     if response.status_code != 200:
+#         print(f"Error fetching league data. Status code: {response.status_code}")
+#         return None
+#
+#     try:
+#         data = json.loads(response.content)
+#     except json.JSONDecodeError as e:
+#         print(f"Error decoding JSON: {e}")
+#         return None
+#
+#     if 'overview' not in data or 'leagueOverviewMatches' not in data['overview']:
+#         print("Error: Unexpected data format")
+#         return None
+#
+#     leagues = data['overview']['leagueOverviewMatches']
+#     season_length = len(data['matches']['allMatches'])
+#     match_ids = []
+#     not_started_count = 0
+#
+#     for i in range(season_length):
+#         if leagues[i]['notStarted']:
+#             not_started_count += 1
+#             if not_started_count >= 10:
+#                 break
+#         else:
+#             not_started_count = 0
+#             match_ids.append(leagues[i]['id'])
+#
+#     match_details = []
+#
+#     # Batch requests for match details
+#     for matchId in match_ids:
+#         response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}')
+#         if response.status_code != 200:
+#             print(f"Error fetching match details. Match ID: {matchId}, Status code: {response.status_code}")
+#             continue
+#
+#         try:
+#             data = json.loads(response.content)
+#         except json.JSONDecodeError as e:
+#             print(f"Error decoding match details JSON: {e}")
+#             continue
+#
+#         if 'general' not in data:
+#             print(f"Error: Unexpected match details format for Match ID: {matchId}")
+#             continue
+#
+#         match_details.append({
+#             'matchId': data['general']['matchId'],
+#             'matchTimeUTCDate': data['general']['matchTimeUTCDate'][:10],
+#             'competitions': data['general']['parentLeagueName'],
+#             'homeTeamName': data['general']['homeTeam']['name'],
+#             'awayTeamName': data['general']['awayTeam']['name'],
+#             'homegoal': data['header']['teams'][0]['score'],
+#             'awaygoal': data['header']['teams'][1]['score'],
+#             'LeagueSeason': data['content']['table']['parentLeagueSeason']
+#         })
+#
+#         print(f"{matchId} processed")
+#         print(f"{len(match_details)} matches processed.")
+#
+#     # Create DataFrame from match_details
+#     if match_details:
+#         df_result = pd.DataFrame(match_details)
+#         return df_result
+#     else:
+#         return None
+
+def get_remaining_fixtures(season_length,match_round,current_round):
+    match_ids = []
+    for i in range(season_length):
+        if match_round[i]['round'] >= current_round:
+            match_ids.append(match_round[i]['id'])
+
+    # Create an empty list to hold the dictionaries
+    data_list = []
+
+    # Loop over match ids and get match details
+    for match_id in match_ids:
+        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+        data = response.content
+        data = json.loads(data)
+
+        home_team = data['general']['homeTeam']
+        home_team_name = home_team['name']
+        home_team_id = home_team['id']
+
+        away_team = data['general']['awayTeam']
+        away_team_name = away_team['name']
+        away_team_id = away_team['id']
+
+        game_match_id = data['general']['matchId']
+        matchRound = data['general']['matchRound']
+
+        # Append the data as a dictionary to the list
+        data_list.append({'matchRound':matchRound,'matchId': game_match_id, 'home_team_id': home_team_id, 'home_team_name': home_team_name, 'away_team_id': away_team_id, 'away_team_name': away_team_name})
+
+    # Create the DataFrame from the list of dictionaries
+    df = pd.DataFrame(data_list)
+
+    return df
+
 
 def get_season_matchgoals_data(season, league_id):
-    response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA&season={season}')
+    formatted_season = format_season_for_url(season)
+
+    response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA&season={formatted_season}')
 
     if response.status_code != 200:
         print(f"Error fetching league data. Status code: {response.status_code}")
@@ -354,15 +462,17 @@ def get_season_matchgoals_data(season, league_id):
             not_started_count = 0
             match_ids.append(leagues[i]['id'])
 
-    match_data = []
+    match_details = []
+
+    # Extract the input season years
+    start_year, end_year = map(int, season.split('/'))
 
     # Batch requests for match details
-    match_details = []
-    for match_id in match_ids:
-        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={match_id}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
+    for matchId in match_ids:
+        response = requests.get(f'https://www.fotmob.com/api/matchDetails?matchId={matchId}&ccode3=USA&timezone=America%2FChicago&refresh=true&includeBuzzTab=false&acceptLanguage=en-US')
 
         if response.status_code != 200:
-            print(f"Error fetching match details. Match ID: {match_id}, Status code: {response.status_code}")
+            print(f"Error fetching match details. Match ID: {matchId}, Status code: {response.status_code}")
             continue
 
         try:
@@ -372,21 +482,24 @@ def get_season_matchgoals_data(season, league_id):
             continue
 
         if 'general' not in data:
-            print(f"Error: Unexpected match details format for Match ID: {match_id}")
+            print(f"Error: Unexpected match details format for Match ID: {matchId}")
             continue
+
+        match_date = data['general']['matchTimeUTCDate'][:10]
+
+
 
         match_details.append({
             'matchId': data['general']['matchId'],
-            'matchTimeUTCDate': data['general']['matchTimeUTCDate'][:10],
+            'matchTimeUTCDate': match_date,
             'competitions': data['general']['parentLeagueName'],
             'homeTeamName': data['general']['homeTeam']['name'],
             'awayTeamName': data['general']['awayTeam']['name'],
             'homegoal': data['header']['teams'][0]['score'],
             'awaygoal': data['header']['teams'][1]['score'],
-            'LeagueSeason': data['content']['table']['parentLeagueSeason']
         })
 
-        print(f"{match_id} processed")
+        print(f"{matchId} processed")
         print(f"{len(match_details)} matches processed.")
 
     # Create DataFrame from match_details
@@ -395,3 +508,37 @@ def get_season_matchgoals_data(season, league_id):
         return df_result
     else:
         return None
+
+
+import requests
+import json
+import pandas as pd
+
+def get_league_table(league_id):
+    """
+    Fetches and processes league table data for the specified league ID.
+
+    Parameters:
+    - league_id (int): The ID of the league to fetch data for.
+
+    Returns:
+    - pd.DataFrame: Processed league table data.
+    """
+
+    # Fetch league data
+    response = requests.get(f'https://www.fotmob.com/api/leagues?id={league_id}&ccode3=USA_MA')
+    data = json.loads(response.content)
+
+    # Extract table data
+    table = pd.DataFrame(data['table'][0]['data']['table']['all'])
+
+    # Split scores into GF and GA columns
+    table[['GF', 'GA']] = table['scoresStr'].str.split('-', expand=True)
+
+    # Convert GF and GA columns to numeric
+    table['GF'] = pd.to_numeric(table['GF'])
+    table['GA'] = pd.to_numeric(table['GA'])
+    table = table.rename(columns={'name':'TeamName'})
+
+    return table
+
